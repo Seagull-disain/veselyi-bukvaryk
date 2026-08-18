@@ -17,7 +17,30 @@ let stars=+localStorage.stars||0;let correct=+localStorage.correct||0;
 function save(){localStorage.stars=stars;localStorage.correct=correct}
 function speak(t){if(typeof speechSynthesis==="undefined")return;speechSynthesis.cancel();let u=new SpeechSynthesisUtterance(t);u.lang="uk-UA";u.rate=.8;speechSynthesis.speak(u)}
 const letterSounds={"А":"А","Б":"Б","В":"В","Г":"Г","Ґ":"Ґ","Д":"Д","Е":"Е","Є":"Є","Ж":"Ж","З":"З","И":"И","І":"І","Ї":"Ї","Й":"Й","К":"К","Л":"Л","М":"М","Н":"Н","О":"О","П":"П","Р":"Р","С":"С","Т":"Т","У":"У","Ф":"Ф","Х":"Х","Ц":"Ц","Ч":"Ч","Ш":"Ш","Щ":"Щ","Ь":"М'який знак","Ю":"Ю","Я":"Я"};
-function speakLetter(i){let x=L[i];if(typeof speechSynthesis==="undefined")return;speechSynthesis.cancel();let first=new SpeechSynthesisUtterance(letterSounds[x[0]]||x[0]);first.lang="uk-UA";first.rate=.8;let second=new SpeechSynthesisUtterance(x[1]);second.lang="uk-UA";second.rate=.8;first.onend=()=>setTimeout(()=>speechSynthesis.speak(second),1000);speechSynthesis.speak(first)}
+
+// Озвучення літери побудоване так: окремий аудіозапис звука -> 1 секунда -> слово.
+// Для Р використовується файл audio/R.wav. Поки його немає, застосовується резервний синтезатор.
+function speakLetter(i){
+  const x=L[i];
+  if(typeof speechSynthesis==="undefined")return;
+  speechSynthesis.cancel();
+  if(x[0]==="Р"){
+    const audio=new Audio("audio/R.wav");
+    let usedAudio=false;
+    audio.oncanplaythrough=()=>{if(usedAudio)return;usedAudio=true;audio.currentTime=0;audio.play().then(()=>{setTimeout(()=>speakWord(x[1]),1000)}).catch(()=>speakLetterFallback(x));};
+    audio.onerror=()=>{if(!usedAudio){usedAudio=true;speakLetterFallback(x)}};
+    audio.load();
+    return;
+  }
+  speakLetterFallback(x);
+}
+function speakLetterFallback(x){
+  const first=new SpeechSynthesisUtterance(letterSounds[x[0]]||x[0]);
+  first.lang="uk-UA";first.rate=.8;
+  first.onend=()=>setTimeout(()=>speakWord(x[1]),1000);
+  speechSynthesis.speak(first);
+}
+function speakWord(word){const second=new SpeechSynthesisUtterance(word);second.lang="uk-UA";second.rate=.8;speechSynthesis.speak(second)}
 function head(t){return `<div class="top"><button class="back" onclick="home()">←</button><div class="logo">${t}</div><div class="stars">⭐ ${stars}</div></div>`}
 function home(){app.innerHTML=`<main><div class="hero"><div>🌈📚</div><h1>Веселий<br>Букварик</h1><p>Вчимося граючись!</p></div><div class="menu"><button class="orange" onclick="letters()">🔤 Літери</button><button class="blue" onclick="nums()">🔢 Цифри</button><button class="green" onclick="game()">🎮 Знайди літеру</button><button class="purple" onclick="countGame()">🍎 Порахуй</button><button class="yellow" onclick="results()">⭐ Мої успіхи</button></div></main>`}
 function letters(){app.innerHTML=head("Українська абетка")+`<div class="title">Обери літеру 👇</div><div class="grid">${L.map((x,i)=>`<button class="card" onclick="letter(${i})">${x[0]}</button>`).join("")}</div>`}
